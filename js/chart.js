@@ -2,7 +2,7 @@
 // Chart Module — TradingView Lightweight Charts
 // ============================================================
 
-import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 
 let chart = null;
 let candleSeries = null;
@@ -93,7 +93,7 @@ export function initChart(containerId, isDark = true) {
     });
 
     // Candlestick series
-    candleSeries = chart.addCandlestickSeries({
+    candleSeries = chart.addSeries(CandlestickSeries, {
         upColor: theme.upColor,
         downColor: theme.downColor,
         borderUpColor: theme.borderUpColor,
@@ -103,7 +103,7 @@ export function initChart(containerId, isDark = true) {
     });
 
     // Volume histogram
-    volumeSeries = chart.addHistogramSeries({
+    volumeSeries = chart.addSeries(HistogramSeries, {
         priceFormat: { type: 'volume' },
         priceScaleId: 'volume',
     });
@@ -113,7 +113,7 @@ export function initChart(containerId, isDark = true) {
     });
 
     // EMA 9 line
-    ema9Series = chart.addLineSeries({
+    ema9Series = chart.addSeries(LineSeries, {
         color: '#4488ff',
         lineWidth: 1,
         lineStyle: 0,
@@ -123,7 +123,7 @@ export function initChart(containerId, isDark = true) {
     });
 
     // EMA 21 line
-    ema21Series = chart.addLineSeries({
+    ema21Series = chart.addSeries(LineSeries, {
         color: '#aa66ff',
         lineWidth: 1,
         lineStyle: 0,
