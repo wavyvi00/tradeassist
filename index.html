@@ -53,6 +53,7 @@
           <button class="tf-btn" data-tf="1h">1H</button>
           <button class="tf-btn" data-tf="4h">4H</button>
         </div>
+        <button id="theme-btn" class="icon-btn" title="Switch to light mode">☀️</button>
         <button id="sound-btn" class="icon-btn active" title="Toggle alerts">🔔</button>
         <button id="popout-btn" class="icon-btn" title="Pop-out mini HUD">⬗</button>
       </div>
@@ -116,8 +117,13 @@
         </div>
       </section>
 
-      <!-- Right: Indicators + History -->
+      <!-- Right: Chart + Indicators + History -->
       <section class="data-section">
+        <div class="chart-section">
+          <h3 class="section-title">📈 BTC/USD Chart</h3>
+          <div id="chart-container" class="chart-container"></div>
+        </div>
+
         <div class="indicators-section">
           <h3 class="section-title">Indicators</h3>
           <div id="indicator-grid" class="indicator-grid">

@@ -19,6 +19,8 @@ import {
     openMiniHUD,
     updateMiniHUD,
 } from './ui.js';
+import { initChart, setCandleData, updateLastCandle, updateChartTheme } from './chart.js';
+import { initTheme, toggleTheme, getTheme } from './theme.js';
 
 // ---- State ----
 let currentTimeframe = '15m'; // Default
@@ -44,6 +46,15 @@ async function init() {
     console.log('[App] Initializing Trading HUD...');
     showLoading(true);
 
+    // Initialize theme (dark/light)
+    initTheme((isDark) => {
+        updateChartTheme(isDark);
+    });
+
+    // Initialize chart
+    const isDark = getTheme() === 'dark';
+    initChart('chart-container', isDark);
+
     // Set up timeframe buttons
     document.querySelectorAll('.tf-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -53,6 +64,12 @@ async function init() {
             }
         });
     });
+
+    // Theme toggle button
+    const themeBtn = document.getElementById('theme-btn');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', toggleTheme);
+    }
 
     // Pop-out button
     const popoutBtn = document.getElementById('popout-btn');
@@ -130,6 +147,9 @@ async function fetchAndAnalyze() {
         updateLastRefresh();
         updateConnectionStatus(true);
 
+        // Update chart with candle data
+        setCandleData(candles);
+
         // Update mini HUD if open
         if (miniHUDWindow && !miniHUDWindow.closed) {
             updateMiniHUD(miniHUDWindow, currentSignal, livePrice, liveChange);
@@ -172,6 +192,9 @@ function startPriceStream() {
                 priceEl.classList.add('pulse');
                 setTimeout(() => priceEl.classList.remove('pulse'), 300);
             }
+
+            // Update chart last candle in real-time
+            updateLastCandle(data.price);
         },
         (error) => {
             updateConnectionStatus(false);
