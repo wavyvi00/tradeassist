@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading HUD — BTC/USD Signal Advisor</title>
+  <meta name="description"
+    content="Real-time BTC/USD swing trade signal advisor with 13 technical indicators and confluence scoring">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+  <!-- Loading Overlay -->
+  <div id="loader" class="loader">
+    <div class="loader-content">
+      <div class="loader-spinner"></div>
+      <div class="loader-text">Connecting to Kraken...</div>
+    </div>
+  </div>
+
+  <div id="main-content" class="app">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-left">
+        <div class="logo">
+          <span class="logo-icon">◈</span>
+          <span class="logo-text">TRADE<span class="logo-accent">HUD</span></span>
+        </div>
+        <div class="pair-badge">BTC / USD</div>
+        <div class="status-badge">
+          <span id="status-dot" class="status-dot connected"></span>
+          <span id="status-text" class="status-text">LIVE</span>
+        </div>
+      </div>
+
+      <div class="top-center">
+        <div class="price-block">
+          <div id="live-price" class="price-value">—</div>
+          <div id="price-change" class="price-change">—</div>
+        </div>
+      </div>
+
+      <div class="top-right">
+        <div class="timeframe-selector">
+          <button class="tf-btn" data-tf="5m">5m</button>
+          <button class="tf-btn" data-tf="15m">15m</button>
+          <button class="tf-btn" data-tf="1h">1H</button>
+          <button class="tf-btn" data-tf="4h">4H</button>
+        </div>
+        <button id="sound-btn" class="icon-btn active" title="Toggle alerts">🔔</button>
+        <button id="popout-btn" class="icon-btn" title="Pop-out mini HUD">⬗</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Left: Trade Plan + Signal -->
+      <section class="signal-section">
+        <!-- Trade Plan — The explicit "BUY here → SELL there" prediction -->
+        <div class="trade-plan-section">
+          <h3 class="section-title">📊 TRADE PLAN</h3>
+          <div id="trade-plan" class="trade-plan-container">
+            <div class="trade-plan-card neutral">
+              <div class="plan-header">
+                <span class="plan-icon">⏳</span>
+                <span class="plan-title">ANALYZING...</span>
+              </div>
+              <div class="plan-summary-text">Calculating indicators and building trade plan...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal Score Card -->
+        <div id="signal-card" class="signal-card">
+          <div class="signal-header">
+            <h2>SIGNAL</h2>
+            <span id="last-refresh" class="last-refresh">—</span>
+          </div>
+
+          <div class="signal-body">
+            <div class="signal-action">⚪ LOADING</div>
+            <div class="signal-score-container">
+              <div class="signal-score-label">Confidence</div>
+              <div class="signal-score">—</div>
+            </div>
+            <div class="score-bar">
+              <div class="score-bar-track">
+                <div class="score-bar-fill"></div>
+                <div class="score-marker"></div>
+              </div>
+              <div class="score-bar-labels">
+                <span>SELL</span>
+                <span>NEUTRAL</span>
+                <span>BUY</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="signal-targets">
+            <div class="target-row neutral-msg">Calculating signals...</div>
+          </div>
+        </div>
+
+        <!-- Signal Breakdown -->
+        <div class="breakdown-section">
+          <h3 class="section-title">Signal Breakdown</h3>
+          <div id="signal-breakdown" class="signal-breakdown">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Indicators + History -->
+      <section class="data-section">
+        <div class="indicators-section">
+          <h3 class="section-title">Indicators</h3>
+          <div id="indicator-grid" class="indicator-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="history-section">
+          <h3 class="section-title">Signal History</h3>
+          <div id="signal-history" class="signal-history">
+            <div class="history-empty">Waiting for first signal...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Disclaimer -->
+    <footer class="disclaimer">
+      ⚠ Not financial advice. Signals are for educational/informational purposes only. Always do your own research.
+    </footer>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+
+</html>
