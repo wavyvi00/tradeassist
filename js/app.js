@@ -25,6 +25,7 @@ import { initTheme, toggleTheme, getTheme } from './theme.js';
 // ---- State ----
 let currentTimeframe = '15m'; // Default
 let currentPair = 'BTC/USD'; // Default
+let isPredictionMode = false; // Default
 let candles = [];
 let currentSignal = null;
 let currentIndicators = null;
@@ -61,6 +62,21 @@ async function init() {
     if (pairSelector) {
         pairSelector.addEventListener('change', (e) => {
             switchPair(e.target.value);
+        });
+    }
+
+    // Prediction Mode Toggle
+    const predictionToggle = document.getElementById('prediction-mode-toggle');
+    if (predictionToggle) {
+        predictionToggle.addEventListener('change', (e) => {
+            isPredictionMode = e.target.checked;
+            // Add visual feedback or logic here
+            if (isPredictionMode) {
+                document.body.classList.add('prediction-mode-active');
+            } else {
+                document.body.classList.remove('prediction-mode-active');
+            }
+            fetchAndAnalyze(); // Re-analyze with new mode
         });
     }
 
@@ -145,7 +161,7 @@ async function fetchAndAnalyze() {
         currentIndicators = computeAll(candles);
 
         // Generate signal with timeframe context
-        currentSignal = generateSignal(currentIndicators, currentTimeframe);
+        currentSignal = generateSignal(currentIndicators, currentTimeframe, isPredictionMode);
 
         // Check if signal changed (for alerts)
         const changed = recordSignal(currentSignal);

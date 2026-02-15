@@ -43,14 +43,62 @@ export function updateSignalCard(signal) {
   if (scoreEl) {
     // Show Probability if available, otherwise just use score
     const scoreVal = signal.probability ? `${signal.probability}%` : `${Math.abs(signal.score)}%`;
-    const scoreLabel = signal.probability ? 'Probability' : 'Confidence';
-
     scoreEl.textContent = scoreVal;
     scoreEl.style.color = signal.color;
 
     // Update label if needed
     const labelEl = card.querySelector('.signal-score-label');
     if (labelEl) labelEl.textContent = scoreLabel;
+  }
+
+  // Determine visual style
+  const type = signal.type;
+
+  if (type === 'UP' || type === 'DOWN') {
+    // PancakeSwap Prediction Mode
+    actionEl.textContent = type;
+    actionEl.style.color = type === 'UP' ? 'var(--green)' : 'var(--red)';
+    card.style.borderColor = type === 'UP' ? 'var(--green)' : 'var(--red)';
+    card.style.boxShadow = `0 0 20px ${type === 'UP' ? 'var(--green)' : 'var(--red)'}20`;
+
+    // Force display
+    const targetsEl = card.querySelector('.signal-targets');
+    if (targetsEl) targetsEl.style.display = 'block';
+    const neutralMsg = card.querySelector('.neutral-msg');
+    if (neutralMsg) neutralMsg.style.display = 'none';
+
+  } else if (type === 'NEUTRAL') {
+    actionEl.textContent = 'WAIT FOR SETUP';
+    actionEl.style.color = 'var(--text-muted)';
+    card.style.borderColor = 'var(--border)';
+    card.style.boxShadow = 'none';
+
+    // Hide targets
+    const targetsEl = card.querySelector('.signal-targets');
+    if (targetsEl) targetsEl.style.display = 'none';
+
+    // Show message
+    let neutralMsg = card.querySelector('.neutral-msg');
+    if (!neutralMsg) {
+      neutralMsg = document.createElement('div');
+      neutralMsg.className = 'neutral-msg';
+      neutralMsg.textContent = 'Market is ranging. Waiting for clear signal...';
+      const body = card.querySelector('.signal-body');
+      if (body) body.appendChild(neutralMsg);
+    }
+    neutralMsg.style.display = 'block';
+  } else {
+    // Normal Buy/Sell
+    actionEl.textContent = type;
+    actionEl.style.color = signal.color;
+    card.style.borderColor = signal.color;
+    card.style.boxShadow = `0 0 20px ${signal.color}20`;
+
+    const targetsEl = card.querySelector('.signal-targets');
+    if (targetsEl) targetsEl.style.display = 'block';
+
+    const neutralMsg = card.querySelector('.neutral-msg');
+    if (neutralMsg) neutralMsg.style.display = 'none';
   }
 
   // Score bar

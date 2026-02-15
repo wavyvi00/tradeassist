@@ -212,10 +212,9 @@ function calculateConfluenceScore(signals) {
 }
 
 /**
- * Calculate prediction confidence/probability based on score and volatility
- * @returns {number} Probability % (0-100)
+ * Calculate Probability Score (0-100%)
  */
-function calculateProbability(score, indicators) {
+function calculateProbability(score, indicators, isPredictionMode = false) {
     // Base probability from score (0-100 scale)
     let probability = (Math.abs(score) + 100) / 2; // Normalize -100..100 to 0..100
 
@@ -229,11 +228,45 @@ function calculateProbability(score, indicators) {
 
     // Adjust based on Squeeze (squeeze break = higher probability)
     if (indicators.bollinger.isSqueeze) {
-        // Lower probability during squeeze (consolidation)
+        // Lower probability during squeeze (consolidation) unless pushing
         probability -= 10;
     }
 
+    // In prediction mode, we want to show a decisive number, but keep it realistic
+    // If it's pure 50/50, push it slightly one way based on momentum
+    if (isPredictionMode && probability < 51) probability = 52;
+
     return Math.min(99, Math.max(1, Math.round(probability)));
+}
+
+/**
+ * Get Forced Prediction Bias for PancakeSwap Mode
+ * Returns 1 (UP) or -1 (DOWN)
+ */
+function getForcedPrediction(indicators, rawSignals) {
+    let biasScore = 0;
+
+    // RSI Slope/Position
+    biasScore += (indicators.rsi.value - 50);
+
+    // MACD Histogram
+    if (indicators.macd.histogram !== null) {
+        biasScore += indicators.macd.histogram * 100; // Scale up small stats
+    }
+
+    // EMA Slope check (Fast EMA vs Slow EMA)
+    const emaDiff = indicators.ema.fast - indicators.ema.slow;
+    biasScore += emaDiff * 10;
+
+    // Recent Price Action (Close vs Open of last candle)
+    // We don't have direct candle access here, but we can infer form price vs EMA
+    if (indicators.price > indicators.ema.fast) biasScore += 5;
+    else biasScore -= 5;
+
+    // If exactly 0, use RSI trend to break tie
+    if (biasScore === 0) return indicators.rsi.value > 50 ? 1 : -1;
+
+    return biasScore > 0 ? 1 : -1;
 }
 
 /**
