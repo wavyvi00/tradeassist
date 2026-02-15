@@ -24,6 +24,7 @@ import { initTheme, toggleTheme, getTheme } from './theme.js';
 
 // ---- State ----
 let currentTimeframe = '15m'; // Default
+let currentPair = 'BTC/USD'; // Default
 let candles = [];
 let currentSignal = null;
 let currentIndicators = null;
@@ -54,6 +55,14 @@ async function init() {
     // Initialize chart
     const isDark = getTheme() === 'dark';
     initChart('chart-container', isDark);
+
+    // Pair selector
+    const pairSelector = document.getElementById('pair-selector');
+    if (pairSelector) {
+        pairSelector.addEventListener('change', (e) => {
+            switchPair(e.target.value);
+        });
+    }
 
     // Set up timeframe buttons
     document.querySelectorAll('.tf-btn').forEach(btn => {
@@ -114,12 +123,15 @@ let soundEnabled = true;
 /**
  * Fetch candles, compute indicators, generate signal
  */
+/**
+ * Fetch candles, compute indicators, generate signal
+ */
 async function fetchAndAnalyze() {
     try {
         // Fetch candles and ticker in parallel
         const [candleData, tickerData] = await Promise.all([
-            fetchCandles(currentTimeframe),
-            fetchTicker(),
+            fetchCandles(currentPair, currentTimeframe),
+            fetchTicker(currentPair),
         ]);
 
         candles = candleData;
@@ -147,6 +159,12 @@ async function fetchAndAnalyze() {
         updateLastRefresh();
         updateConnectionStatus(true);
 
+        // Update chart title (optional, usually handled by UI but we can update title here if needed)
+        const chartTitle = document.querySelector('.chart-section .section-title');
+        if (chartTitle) chartTitle.textContent = `📈 ${currentPair} Chart`;
+
+        document.title = `Trading HUD — ${currentPair} Signal Advisor`;
+
         // Update chart with candle data
         setCandleData(candles);
 
@@ -173,6 +191,7 @@ function startPriceStream() {
     if (priceStream) priceStream.close();
 
     priceStream = createPriceStream(
+        currentPair,
         (data) => {
             livePrice = data.price;
             // Update the price display in real-time
@@ -182,8 +201,8 @@ function startPriceStream() {
                 priceEl.textContent = data.price.toLocaleString('en-US', {
                     style: 'currency',
                     currency: 'USD',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
+                    minimumFractionDigits: data.price > 1000 ? 0 : 2,
+                    maximumFractionDigits: data.price > 1000 ? 0 : 2,
                 });
             }
 
@@ -209,6 +228,22 @@ function startAutoRefresh() {
     if (refreshInterval) clearInterval(refreshInterval);
     const interval = REFRESH_INTERVALS[currentTimeframe] || 60000;
     refreshInterval = setInterval(fetchAndAnalyze, interval);
+}
+
+/**
+ * Switch pair
+ */
+async function switchPair(pair) {
+    currentPair = pair;
+    showLoading(true);
+
+    // Clear chart data temporarily or handle logic in setCandleData
+    // We'll just let fetchAndAnalyze overwrite it
+
+    await fetchAndAnalyze();
+    startPriceStream(); // Reconnect WS for new pair
+    startAutoRefresh();
+    showLoading(false);
 }
 
 /**

@@ -41,8 +41,16 @@ export function updateSignalCard(signal) {
   // Confidence score
   const scoreEl = card.querySelector('.signal-score');
   if (scoreEl) {
-    scoreEl.textContent = `${Math.abs(signal.score)}%`;
+    // Show Probability if available, otherwise just use score
+    const scoreVal = signal.probability ? `${signal.probability}%` : `${Math.abs(signal.score)}%`;
+    const scoreLabel = signal.probability ? 'Probability' : 'Confidence';
+
+    scoreEl.textContent = scoreVal;
     scoreEl.style.color = signal.color;
+
+    // Update label if needed
+    const labelEl = card.querySelector('.signal-score-label');
+    if (labelEl) labelEl.textContent = scoreLabel;
   }
 
   // Score bar
@@ -64,11 +72,21 @@ export function updateSignalCard(signal) {
   const targetsEl = card.querySelector('.signal-targets');
   if (targetsEl && signal.targets.entry !== null) {
     const isBuy = signal.action.includes('BUY');
+
+    // Add MPO display
+    const mpoHtml = signal.tradePlan.mpo ? `
+      <div class="target-row mpo-row">
+        <span class="target-label">Most Possible Range</span>
+        <span class="target-value">${formatPrice(signal.tradePlan.mpo.low)} - ${formatPrice(signal.tradePlan.mpo.high)}</span>
+      </div>
+    ` : '';
+
     targetsEl.innerHTML = `
       <div class="target-row">
         <span class="target-label">Entry</span>
         <span class="target-value">${formatPrice(signal.targets.entry)}</span>
       </div>
+      ${mpoHtml}
       <div class="target-row ${isBuy ? 'stop-loss' : 'stop-loss'}">
         <span class="target-label">Stop Loss</span>
         <span class="target-value">${formatPrice(signal.targets.stopLoss)}</span>

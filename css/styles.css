@@ -1149,6 +1149,45 @@ body,
   border-color: rgba(196, 155, 0, 0.2);
 }
 
+/* Styles for the pair selector dropdown */
+.pair-selector-container {
+  position: relative;
+}
+
+.pair-selector {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 6px 32px 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238888aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+}
+
+.pair-selector:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pair-selector:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(68, 136, 255, 0.2);
+}
+
+[data-theme="light"] .pair-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(0, 168, 107, 0.15);
+}
+
 [data-theme="light"] .status-badge {
   background: rgba(0, 168, 107, 0.06);
   border-color: rgba(0, 168, 107, 0.15);

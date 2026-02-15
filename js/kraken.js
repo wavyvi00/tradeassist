@@ -13,20 +13,24 @@ const INTERVAL_MAP = {
     '4h': 240,
 };
 
-// Kraken uses XBTUSD for BTC/USD
-const PAIR_REST = 'XBTUSD';
-const PAIR_WS = 'XBT/USD';
+// Supported pairs configuration
+export const PAIRS = {
+    'BTC/USD': { rest: 'XBTUSD', ws: 'XBT/USD' },
+    'BNB/USD': { rest: 'BNBUSD', ws: 'BNB/USD' },
+};
 
 /**
  * Fetch historical OHLCV candles from Kraken REST API
+ * @param {string} pair - 'BTC/USD' or 'BNB/USD'
  * @param {string} interval - '5m', '15m', '1h', '4h'
  * @param {number} [since] - Unix timestamp to fetch from
  * @returns {Promise<Array<{time:number, open:number, high:number, low:number, close:number, volume:number}>>}
  */
-export async function fetchCandles(interval = '5m', since = null) {
+export async function fetchCandles(pair = 'BTC/USD', interval = '5m', since = null) {
     const krakenInterval = INTERVAL_MAP[interval] || 5;
+    const pairConfig = PAIRS[pair] || PAIRS['BTC/USD'];
 
-    let url = `${KRAKEN_REST}/0/public/OHLC?pair=${PAIR_REST}&interval=${krakenInterval}`;
+    let url = `${KRAKEN_REST}/0/public/OHLC?pair=${pairConfig.rest}&interval=${krakenInterval}`;
     if (since) {
         url += `&since=${since}`;
     }
@@ -56,10 +60,12 @@ export async function fetchCandles(interval = '5m', since = null) {
 
 /**
  * Fetch current ticker info (24h stats + last trade price)
+ * @param {string} pair - 'BTC/USD' or 'BNB/USD'
  * @returns {Promise<{price:number, bid:number, ask:number, volume24h:number, high24h:number, low24h:number, open24h:number, change24h:number, changePct24h:number}>}
  */
-export async function fetchTicker() {
-    const url = `${KRAKEN_REST}/0/public/Ticker?pair=${PAIR_REST}`;
+export async function fetchTicker(pair = 'BTC/USD') {
+    const pairConfig = PAIRS[pair] || PAIRS['BTC/USD'];
+    const url = `${KRAKEN_REST}/0/public/Ticker?pair=${pairConfig.rest}`;
     const response = await fetch(url);
     const data = await response.json();
 
@@ -90,24 +96,26 @@ export async function fetchTicker() {
 
 /**
  * Create a WebSocket connection for real-time price updates
+ * @param {string} pair - 'BTC/USD' or 'BNB/USD'
  * @param {function} onPrice - Callback with { price, bid, ask, volume }
  * @param {function} onError - Error callback
  * @returns {{ close: function }}
  */
-export function createPriceStream(onPrice, onError) {
+export function createPriceStream(pair, onPrice, onError) {
     let ws = null;
     let reconnectTimer = null;
     let isClosing = false;
+    const pairConfig = PAIRS[pair] || PAIRS['BTC/USD'];
 
     function connect() {
         ws = new WebSocket(KRAKEN_WS);
 
         ws.onopen = () => {
-            console.log('[Kraken WS] Connected');
-            // Subscribe to ticker for BTC/USD
+            console.log(`[Kraken WS] Connected (${pair})`);
+            // Subscribe to ticker for the pair
             ws.send(JSON.stringify({
                 event: 'subscribe',
-                pair: [PAIR_WS],
+                pair: [pairConfig.ws],
                 subscription: { name: 'ticker' },
             }));
         };

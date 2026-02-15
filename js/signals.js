@@ -23,19 +23,32 @@ const TOTAL_WEIGHT = Object.values(WEIGHTS).reduce((a, b) => a + b, 0);
  * Generate individual indicator signals
  * Returns values between -1 (strong sell) and +1 (strong buy)
  */
-function getIndicatorSignals(indicators) {
+function getIndicatorSignals(indicators, timeframe) {
     const signals = {};
+    const is5m = timeframe === '5m';
 
     // --- RSI Signal ---
     if (indicators.rsi.value !== null) {
         const rsiVal = indicators.rsi.value;
-        if (rsiVal < 20) signals.rsi = 1.0;           // Extremely oversold → strong buy
-        else if (rsiVal < 30) signals.rsi = 0.7;       // Oversold → buy
-        else if (rsiVal < 40) signals.rsi = 0.3;       // Approaching oversold
-        else if (rsiVal > 80) signals.rsi = -1.0;      // Extremely overbought → strong sell
-        else if (rsiVal > 70) signals.rsi = -0.7;      // Overbought → sell
-        else if (rsiVal > 60) signals.rsi = -0.3;      // Approaching overbought
-        else signals.rsi = 0;
+        if (is5m) {
+            // Aggressive 5m thresholds
+            if (rsiVal < 25) signals.rsi = 1.0;           // Extremely oversold
+            else if (rsiVal < 35) signals.rsi = 0.7;       // Oversold
+            else if (rsiVal < 45) signals.rsi = 0.3;       // Approaching oversold
+            else if (rsiVal > 75) signals.rsi = -1.0;      // Extremely overbought
+            else if (rsiVal > 65) signals.rsi = -0.7;      // Overbought
+            else if (rsiVal > 55) signals.rsi = -0.3;      // Approaching overbought
+            else signals.rsi = 0;
+        } else {
+            // Standard thresholds
+            if (rsiVal < 20) signals.rsi = 1.0;
+            else if (rsiVal < 30) signals.rsi = 0.7;
+            else if (rsiVal < 40) signals.rsi = 0.3;
+            else if (rsiVal > 80) signals.rsi = -1.0;
+            else if (rsiVal > 70) signals.rsi = -0.7;
+            else if (rsiVal > 60) signals.rsi = -0.3;
+            else signals.rsi = 0;
+        }
     } else {
         signals.rsi = 0;
     }
@@ -50,12 +63,16 @@ function getIndicatorSignals(indicators) {
             // Histogram direction + magnitude
             const hist = indicators.macd.histogram;
             const prevHist = indicators.macd.prevHistogram;
+
+            // More sensitive momentum check for 5m
+            const momentumWeight = is5m ? 0.8 : 0.5;
+
             if (hist > 0 && prevHist !== null && hist > prevHist) {
-                signals.macdCross = 0.5; // Bullish momentum increasing
+                signals.macdCross = momentumWeight; // Bullish momentum increasing
             } else if (hist > 0) {
                 signals.macdCross = 0.2; // Bullish but slowing
             } else if (hist < 0 && prevHist !== null && hist < prevHist) {
-                signals.macdCross = -0.5; // Bearish momentum increasing
+                signals.macdCross = -momentumWeight; // Bearish momentum increasing
             } else if (hist < 0) {
                 signals.macdCross = -0.2; // Bearish but slowing
             } else {
@@ -195,6 +212,31 @@ function calculateConfluenceScore(signals) {
 }
 
 /**
+ * Calculate prediction confidence/probability based on score and volatility
+ * @returns {number} Probability % (0-100)
+ */
+function calculateProbability(score, indicators) {
+    // Base probability from score (0-100 scale)
+    let probability = (Math.abs(score) + 100) / 2; // Normalize -100..100 to 0..100
+
+    // Adjust based on ADX (stronger trend = higher probability)
+    if (indicators.adx.value > 25) {
+        probability += 5;
+    }
+    if (indicators.adx.value > 40) {
+        probability += 5;
+    }
+
+    // Adjust based on Squeeze (squeeze break = higher probability)
+    if (indicators.bollinger.isSqueeze) {
+        // Lower probability during squeeze (consolidation)
+        probability -= 10;
+    }
+
+    return Math.min(99, Math.max(1, Math.round(probability)));
+}
+
+/**
  * Determine signal type from score
  */
 function getSignalType(score) {
@@ -284,7 +326,7 @@ const TIMEFRAME_INFO = {
  * Build an explicit trade plan: "BUY here → SELL there" or "SELL here → BUY BACK there"
  * Includes timeframe-aware hold duration, expected move range, and support/resistance zones.
  */
-function buildTradePlan(indicators, signalType, targets, timeframe) {
+function buildTradePlan(indicators, signalType, targets, timeframe, mpo) {
     const price = indicators.price.current;
     const atrVal = indicators.atr.value || price * 0.01;
     const tfInfo = TIMEFRAME_INFO[timeframe] || TIMEFRAME_INFO['15m'];
@@ -377,6 +419,7 @@ function buildTradePlan(indicators, signalType, targets, timeframe) {
         reasons: reasons.slice(0, 5), // Top 5 reasons
         timeframe,
         timeframeLabel: tfInfo.label,
+        mpo, // Most Possible Outcome range
     };
 }
 
@@ -387,11 +430,28 @@ function buildTradePlan(indicators, signalType, targets, timeframe) {
  * @returns {object} Complete signal with score, type, targets, trade plan, and breakdown
  */
 export function generateSignal(indicators, timeframe = '15m') {
-    const signals = getIndicatorSignals(indicators);
+    const signals = getIndicatorSignals(indicators, timeframe);
     const score = calculateConfluenceScore(signals);
     const signalType = getSignalType(score);
     const targets = calculateTargets(indicators, signalType);
-    const tradePlan = buildTradePlan(indicators, signalType, targets, timeframe);
+    const probability = calculateProbability(score, indicators);
+
+    // Calculate Most Possible Outcome (MPO)
+    // 1 Standard Deviation from Moving Average (Bollinger Bands logic)
+    // If we don't have Bollinger, estimate with ATR
+    let mpoHigh, mpoLow;
+    if (indicators.bollinger.upper && indicators.bollinger.lower) {
+        // Use bands as the statistical "likely" range
+        mpoHigh = indicators.bollinger.upper;
+        mpoLow = indicators.bollinger.lower;
+    } else {
+        const price = indicators.price.current;
+        const atr = indicators.atr.value || price * 0.01;
+        mpoHigh = price + (atr * 2);
+        mpoLow = price - (atr * 2);
+    }
+
+    const tradePlan = buildTradePlan(indicators, signalType, targets, timeframe, { high: mpoHigh, low: mpoLow });
 
     // Build indicator breakdown for UI
     const breakdown = Object.entries(signals).map(([key, value]) => ({
@@ -404,6 +464,7 @@ export function generateSignal(indicators, timeframe = '15m') {
 
     return {
         score,
+        probability,
         ...signalType,
         targets,
         tradePlan,
