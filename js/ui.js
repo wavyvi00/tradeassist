@@ -43,6 +43,7 @@ export function updateSignalCard(signal) {
   if (scoreEl) {
     // Show Probability if available, otherwise just use score
     const scoreVal = signal.probability ? `${signal.probability}%` : `${Math.abs(signal.score)}%`;
+    const scoreLabel = signal.probability ? 'Probability' : 'Confidence';
     scoreEl.textContent = scoreVal;
     scoreEl.style.color = signal.color;
 
