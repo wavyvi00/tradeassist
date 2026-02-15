@@ -451,6 +451,58 @@ export function openMiniHUD(signal) {
   updateMiniHUD(popup, signal);
 }
 
+/**
+ * Update PancakeSwap Round Info
+ */
+export function updateRoundInfo(round) {
+  const card = document.getElementById('signal-card');
+  if (!card) return;
+
+  let roundEl = card.querySelector('.round-info');
+  if (!round && roundEl) {
+    roundEl.style.display = 'none';
+    return;
+  }
+
+  if (!round) return;
+
+  if (!roundEl) {
+    roundEl = document.createElement('div');
+    roundEl.className = 'round-info';
+    roundEl.style.marginTop = '15px';
+    roundEl.style.padding = '10px';
+    roundEl.style.background = 'rgba(255, 255, 255, 0.05)';
+    roundEl.style.borderRadius = '8px';
+    roundEl.style.fontSize = '0.9em';
+    roundEl.style.display = 'flex';
+    roundEl.style.justifyContent = 'space-between';
+    roundEl.style.alignItems = 'center';
+
+    // Insert after targets
+    const targetsEl = card.querySelector('.signal-targets');
+    if (targetsEl) targetsEl.parentNode.insertBefore(roundEl, targetsEl.nextSibling);
+  }
+
+  roundEl.style.display = 'flex';
+
+  // Format timer
+  const mins = Math.floor(round.secondsRemaining / 60);
+  const secs = round.secondsRemaining % 60;
+  const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+  const isUrgent = round.secondsRemaining < 30;
+
+  roundEl.innerHTML = `
+        <div style="display: flex; flex-direction: column;">
+            <span style="color: #888; font-size: 0.8em;">ROUND</span>
+            <span style="font-weight: bold; color: #e0e0e0;">#${round.epoch}</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="color: #888; font-size: 0.8em;">CLOSING IN</span>
+            <span style="font-weight: bold; color: ${isUrgent ? '#ff3344' : '#00ff88'}; font-family: monospace; font-size: 1.2em;">${timeStr}</span>
+        </div>
+    `;
+}
+
 export function updateMiniHUD(popup, signal, price, change) {
   if (!popup || popup.closed) return;
 

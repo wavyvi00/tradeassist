@@ -18,7 +18,9 @@ import {
     showLoading,
     openMiniHUD,
     updateMiniHUD,
+    updateRoundInfo,
 } from './ui.js';
+import { getPancakeRound } from './pancake.js';
 import { initChart, setCandleData, updateLastCandle, updateChartTheme } from './chart.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
 
@@ -42,6 +44,9 @@ const REFRESH_INTERVALS = {
     '1h': 120 * 1000,   // 2 minutes
     '4h': 300 * 1000,   // 5 minutes
 };
+
+let pancakeInterval = null;
+let lastRoundEpoch = null;
 
 // ---- Initialization ----
 async function init() {
@@ -73,8 +78,11 @@ async function init() {
             // Add visual feedback or logic here
             if (isPredictionMode) {
                 document.body.classList.add('prediction-mode-active');
+                startPancakePolling();
             } else {
                 document.body.classList.remove('prediction-mode-active');
+                stopPancakePolling();
+                updateRoundInfo(null); // Clear UI
             }
             fetchAndAnalyze(); // Re-analyze with new mode
         });
@@ -235,6 +243,40 @@ function startPriceStream() {
             updateConnectionStatus(false);
         }
     );
+}
+
+/**
+ * Start polling PancakeSwap data
+ */
+function startPancakePolling() {
+    if (pancakeInterval) clearInterval(pancakeInterval);
+    pollPancakeRound(); // Immediate call
+    pancakeInterval = setInterval(pollPancakeRound, 1000);
+}
+
+function stopPancakePolling() {
+    if (pancakeInterval) clearInterval(pancakeInterval);
+    pancakeInterval = null;
+}
+
+/**
+ * Poll for round status
+ */
+async function pollPancakeRound() {
+    if (!isPredictionMode) return;
+
+    const round = await getPancakeRound();
+    if (round) {
+        updateRoundInfo(round);
+
+        // Auto-refresh signal when round is locking soon (e.g. 15s remaining)
+        // Only do this once per round
+        if (round.secondsRemaining <= 15 && round.secondsRemaining > 5 && lastRoundEpoch !== round.epoch) {
+            console.log('[Pancake] Round locking soon! Forcing analysis...');
+            lastRoundEpoch = round.epoch;
+            fetchAndAnalyze();
+        }
+    }
 }
 
 /**
