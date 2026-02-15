@@ -316,7 +316,7 @@ function calculateTargets(indicators, signalType) {
 
 // Timeframe human-readable labels and expected candle durations
 const TIMEFRAME_INFO = {
-    '5m': { label: '5 min', candlesLabel: '1–3 candles', candleMinutes: 5, swingCandles: 3 },
+    '5m': { label: '5 min', candlesLabel: '1 candle', candleMinutes: 5, swingCandles: 1 },
     '15m': { label: '15 min', candlesLabel: '2–4 candles', candleMinutes: 15, swingCandles: 4 },
     '1h': { label: '1 hour', candlesLabel: '2–6 candles', candleMinutes: 60, swingCandles: 4 },
     '4h': { label: '4 hour', candlesLabel: '2–4 candles', candleMinutes: 240, swingCandles: 3 },
@@ -348,13 +348,15 @@ function buildTradePlan(indicators, signalType, targets, timeframe, mpo) {
         };
     }
 
+
     // Expected move = ATR * number of swing candles (statistical expected range)
     const expectedMove = atrVal * Math.sqrt(tfInfo.swingCandles); // √n scaling for random walk
     const holdMinutes = tfInfo.candleMinutes * tfInfo.swingCandles;
 
     // Format hold time
     let holdTime;
-    if (holdMinutes < 60) holdTime = `~${holdMinutes} min`;
+    if (timeframe === '5m') holdTime = 'Exactly 5 min';
+    else if (holdMinutes < 60) holdTime = `~${holdMinutes} min`;
     else if (holdMinutes < 1440) holdTime = `~${(holdMinutes / 60).toFixed(1)} hrs`;
     else holdTime = `~${(holdMinutes / 1440).toFixed(1)} days`;
 
