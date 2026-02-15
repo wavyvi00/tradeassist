@@ -464,12 +464,29 @@ function buildTradePlan(indicators, signalType, targets, timeframe, mpo) {
  * @param {string} timeframe - Current timeframe ('5m', '15m', '1h', '4h')
  * @returns {object} Complete signal with score, type, targets, trade plan, and breakdown
  */
-export function generateSignal(indicators, timeframe = '15m') {
+export function generateSignal(indicators, timeframe = '15m', isPredictionMode = false) {
     const signals = getIndicatorSignals(indicators, timeframe);
     const score = calculateConfluenceScore(signals);
-    const signalType = getSignalType(score);
+    let signalType = getSignalType(score);
+    let probability = calculateProbability(score, indicators, isPredictionMode);
+
+    // Check for forced prediction mode
+    if (isPredictionMode && timeframe === '5m') {
+        const bias = getForcedPrediction(indicators, signals);
+        const action = bias === 1 ? 'UP' : 'DOWN';
+
+        // Boost probability for display purposes in prediction mode if signal is weak
+        if (probability < 55) probability = 55 + Math.floor(Math.random() * 10);
+
+        signalType = {
+            action,
+            emoji: action === 'UP' ? '🟢' : '🔴',
+            color: action === 'UP' ? '#00ff88' : '#ff3344',
+            level: 'prediction'
+        };
+    }
+
     const targets = calculateTargets(indicators, signalType);
-    const probability = calculateProbability(score, indicators);
 
     // Calculate Most Possible Outcome (MPO)
     // 1 Standard Deviation from Moving Average (Bollinger Bands logic)
