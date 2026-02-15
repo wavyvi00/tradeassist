@@ -467,6 +467,7 @@ export function updateRoundInfo(round) {
   if (!round) return;
 
   if (!roundEl) {
+    console.log('[UI] Creating round info element...');
     roundEl = document.createElement('div');
     roundEl.className = 'round-info';
     roundEl.style.marginTop = '15px';
@@ -480,7 +481,13 @@ export function updateRoundInfo(round) {
 
     // Insert after targets
     const targetsEl = card.querySelector('.signal-targets');
-    if (targetsEl) targetsEl.parentNode.insertBefore(roundEl, targetsEl.nextSibling);
+    if (targetsEl) {
+      targetsEl.parentNode.insertBefore(roundEl, targetsEl.nextSibling);
+      console.log('[UI] Inserted round info after targets');
+    } else {
+      console.warn('[UI] Targets element not found, appending to card');
+      card.appendChild(roundEl);
+    }
   }
 
   roundEl.style.display = 'flex';
