@@ -492,13 +492,27 @@ export function updateRoundInfo(round) {
   const isUrgent = round.secondsRemaining < 30;
 
   roundEl.innerHTML = `
-        <div style="display: flex; flex-direction: column;">
-            <span style="color: #888; font-size: 0.8em;">ROUND</span>
-            <span style="font-weight: bold; color: #e0e0e0;">#${round.epoch}</span>
-        </div>
-        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-            <span style="color: #888; font-size: 0.8em;">CLOSING IN</span>
-            <span style="font-weight: bold; color: ${isUrgent ? '#ff3344' : '#00ff88'}; font-family: monospace; font-size: 1.2em;">${timeStr}</span>
+        <div style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; flex-direction: column;">
+                    <span style="color: #888; font-size: 0.8em;">ROUND</span>
+                    <span style="font-weight: bold; color: #e0e0e0; font-family: monospace;">#${round.epoch}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                    <span style="color: #888; font-size: 0.8em;">CLOSING IN</span>
+                    <span style="font-weight: bold; color: ${isUrgent ? '#ff3344' : '#00ff88'}; font-family: monospace; font-size: 1.2em;">${timeStr}</span>
+                </div>
+            </div>
+
+            <!-- Sentiment Bar -->
+            <div style="background: rgba(255,51,68,0.2); height: 6px; border-radius: 3px; overflow: hidden; display: flex;">
+                <div style="width: ${round.bullRatio}%; background: #00ff88; height: 100%; box-shadow: 0 0 10px #00ff88;"></div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.75em; font-family: monospace;">
+                <span style="color: #00ff88;">UP: ${round.bullRatio}% (${Math.round(round.bullAmount)} BNB)</span>
+                <span style="color: #ff3344;">DOWN: ${round.bearRatio}% (${Math.round(round.bearAmount)} BNB)</span>
+            </div>
         </div>
     `;
 }

@@ -53,14 +53,28 @@ export async function getPancakeRound() {
         const lockTimestamp = roundData.lockTimestamp.toNumber();
         const secondsRemaining = lockTimestamp - now;
 
+        const bullAmount = parseFloat(ethers.utils.formatEther(roundData.bullAmount));
+        const bearAmount = parseFloat(ethers.utils.formatEther(roundData.bearAmount));
+        const totalAmount = parseFloat(ethers.utils.formatEther(roundData.totalAmount));
+
+        // Calculate ratios
+        let bullRatio = 50;
+        let bearRatio = 50;
+        if (totalAmount > 0) {
+            bullRatio = Math.round((bullAmount / totalAmount) * 100);
+            bearRatio = 100 - bullRatio;
+        }
+
         return {
             epoch: currentEpoch.toString(),
             lockTimestamp,
             secondsRemaining,
             status: secondsRemaining > 0 ? 'OPEN' : 'LOCKED',
-            bullAmount: ethers.utils.formatEther(roundData.bullAmount),
-            bearAmount: ethers.utils.formatEther(roundData.bearAmount),
-            totalAmount: ethers.utils.formatEther(roundData.totalAmount),
+            bullAmount,
+            bearAmount,
+            totalAmount,
+            bullRatio,
+            bearRatio
         };
     } catch (e) {
         console.error("[Pancake] Error fetching round:", e);
