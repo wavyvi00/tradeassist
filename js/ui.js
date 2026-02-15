@@ -472,12 +472,12 @@ export function updateRoundInfo(round) {
     roundEl.className = 'round-info';
     roundEl.style.marginTop = '15px';
     roundEl.style.padding = '10px';
-    roundEl.style.background = 'rgba(255, 255, 255, 0.05)';
+    roundEl.style.background = 'var(--bg-secondary)'; // Use theme variable
     roundEl.style.borderRadius = '8px';
     roundEl.style.fontSize = '0.9em';
     roundEl.style.display = 'flex';
-    roundEl.style.justifyContent = 'space-between';
-    roundEl.style.alignItems = 'center';
+    roundEl.style.flexDirection = 'column'; // Changed to column for better layout
+    roundEl.style.gap = '8px';
 
     // Insert after targets
     const targetsEl = card.querySelector('.signal-targets');
@@ -502,23 +502,23 @@ export function updateRoundInfo(round) {
         <div style="width: 100%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div style="display: flex; flex-direction: column;">
-                    <span style="color: #888; font-size: 0.8em;">ROUND</span>
-                    <span style="font-weight: bold; color: #e0e0e0; font-family: monospace;">#${round.epoch}</span>
+                    <span style="color: var(--text-secondary); font-size: 0.8em;">ROUND</span>
+                    <span style="font-weight: bold; color: var(--text-primary); font-family: var(--font-mono);">#${round.epoch}</span>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                    <span style="color: #888; font-size: 0.8em;">CLOSING IN</span>
-                    <span style="font-weight: bold; color: ${isUrgent ? '#ff3344' : '#00ff88'}; font-family: monospace; font-size: 1.2em;">${timeStr}</span>
+                    <span style="color: var(--text-secondary); font-size: 0.8em;">CLOSING IN</span>
+                    <span style="font-weight: bold; color: ${isUrgent ? 'var(--red)' : 'var(--green)'}; font-family: var(--font-mono); font-size: 1.2em;">${timeStr}</span>
                 </div>
             </div>
 
             <!-- Sentiment Bar -->
-            <div style="background: rgba(255,51,68,0.2); height: 6px; border-radius: 3px; overflow: hidden; display: flex;">
-                <div style="width: ${round.bullRatio}%; background: #00ff88; height: 100%; box-shadow: 0 0 10px #00ff88;"></div>
+            <div style="background: rgba(128,128,128,0.2); height: 6px; border-radius: 3px; overflow: hidden; display: flex;">
+                <div style="width: ${round.bullRatio}%; background: var(--green); height: 100%; box-shadow: 0 0 10px var(--green-bg);"></div>
             </div>
             
-            <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.75em; font-family: monospace;">
-                <span style="color: #00ff88;">UP: ${round.bullRatio}% (${Math.round(round.bullAmount)} BNB)</span>
-                <span style="color: #ff3344;">DOWN: ${round.bearRatio}% (${Math.round(round.bearAmount)} BNB)</span>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.75em; font-family: var(--font-mono);">
+                <span style="color: var(--green);">UP: ${round.bullRatio}% (${Math.round(round.bullAmount)} BNB)</span>
+                <span style="color: var(--red);">DOWN: ${round.bearRatio}% (${Math.round(round.bearAmount)} BNB)</span>
             </div>
         </div>
     `;
