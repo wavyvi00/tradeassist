@@ -249,22 +249,34 @@ function getForcedPrediction(indicators, rawSignals) {
     // RSI Slope/Position
     biasScore += (indicators.rsi.value - 50);
 
-    // MACD Histogram
+    // MACD Histogram - Weighted heavily for momentum
     if (indicators.macd.histogram !== null) {
-        biasScore += indicators.macd.histogram * 100; // Scale up small stats
+        biasScore += indicators.macd.histogram * 150;
     }
 
     // EMA Slope check (Fast EMA vs Slow EMA)
     const emaDiff = indicators.ema.fast - indicators.ema.slow;
-    biasScore += emaDiff * 10;
+    biasScore += emaDiff * 15;
 
-    // Recent Price Action (Close vs Open of last candle)
-    // We don't have direct candle access here, but we can infer form price vs EMA
-    if (indicators.price > indicators.ema.fast) biasScore += 5;
-    else biasScore -= 5;
+    // Recent Price Action (Current Price vs EMA Fast)
+    // Highly reactive to immediate price moves
+    if (indicators.price.current > indicators.ema.fast) {
+        biasScore += 15;
+    } else {
+        biasScore -= 15;
+    }
 
-    // If exactly 0, use RSI trend to break tie
-    if (biasScore === 0) return indicators.rsi.value > 50 ? 1 : -1;
+    // Stochastic Oscillator - Overbought/Oversold Reversals
+    if (indicators.stochastic.k !== null) {
+        if (indicators.stochastic.k < 20) biasScore += 10; // Oversold bounce likely
+        if (indicators.stochastic.k > 80) biasScore -= 10; // Overbought pull likely
+    }
+
+    // If signal is weak, follow the 1-minute trend if available (simulated by checking close vs open of last candle if we had it, but here we use price trend)
+    // If exactly 0, use RSI trend
+    if (Math.abs(biasScore) < 5) {
+        return indicators.rsi.value > indicators.rsi.prevValue ? 1 : -1;
+    }
 
     return biasScore > 0 ? 1 : -1;
 }

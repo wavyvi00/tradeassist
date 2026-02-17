@@ -19,8 +19,9 @@ import {
     openMiniHUD,
     updateMiniHUD,
     updateRoundInfo,
+    updateWhaleAlerts,
 } from './ui.js';
-import { getPancakeRound } from './pancake.js';
+import { getPancakeRound, getRoundHistory, startBetMonitor, stopBetMonitor } from './pancake.js';
 import { initChart, setCandleData, updateLastCandle, updateChartTheme } from './chart.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
 
@@ -47,6 +48,7 @@ const REFRESH_INTERVALS = {
 
 let pancakeInterval = null;
 let lastRoundEpoch = null;
+let currentRound = null;
 
 // ---- Initialization ----
 async function init() {
@@ -171,6 +173,11 @@ async function fetchAndAnalyze() {
         // Generate signal with timeframe context
         currentSignal = generateSignal(currentIndicators, currentTimeframe, isPredictionMode);
 
+        // Attach round info to trade plan if in prediction mode
+        if (isPredictionMode && currentRound) {
+            currentSignal.tradePlan.round = currentRound;
+        }
+
         // Check if signal changed (for alerts)
         const changed = recordSignal(currentSignal);
 
@@ -252,11 +259,13 @@ function startPancakePolling() {
     if (pancakeInterval) clearInterval(pancakeInterval);
     pollPancakeRound(); // Immediate call
     pancakeInterval = setInterval(pollPancakeRound, 1000);
+    startBetMonitor(updateWhaleAlerts);
 }
 
 function stopPancakePolling() {
     if (pancakeInterval) clearInterval(pancakeInterval);
     pancakeInterval = null;
+    stopBetMonitor();
 }
 
 /**
@@ -267,7 +276,11 @@ async function pollPancakeRound() {
 
     const round = await getPancakeRound();
     if (round) {
-        updateRoundInfo(round);
+        currentRound = round;
+        // Fetch history periodically (or just every time for simplicity, it's cheap)
+        const history = await getRoundHistory(5);
+
+        updateRoundInfo(round, history, livePrice);
 
         // Auto-refresh signal when round is locking soon (e.g. 15s remaining)
         // Only do this once per round

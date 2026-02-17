@@ -197,6 +197,22 @@ export function updateTradePlan(plan, signal) {
   const actionWord = isBuy ? 'BUY' : 'SELL';
   const exitWord = isBuy ? 'SELL' : 'BUY BACK';
 
+  // Format Round Info if available
+  let roundInfoHtml = '';
+  if (plan.round) {
+    const mins = Math.floor(plan.round.secondsRemaining / 60);
+    const secs = plan.round.secondsRemaining % 60;
+    const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+    const isUrgent = plan.round.secondsRemaining < 30;
+
+    roundInfoHtml = `
+        <div class="plan-round-timer" style="font-size: 0.9em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px;">
+            <span style="color: var(--text-secondary);">Round #${plan.round.epoch}</span>
+            <span style="font-family: var(--font-mono); font-weight: bold; color: ${isUrgent ? 'var(--red)' : 'var(--text-primary)'};">⏳ ${timeStr}</span>
+        </div>
+     `;
+  }
+
   container.innerHTML = `
       <div class="trade-plan-card ${isBuy ? 'buy' : 'sell'}">
         <div class="plan-header">
@@ -205,6 +221,8 @@ export function updateTradePlan(plan, signal) {
           <span class="plan-timeframe">${plan.timeframeLabel} timeframe</span>
         </div>
         
+        ${roundInfoHtml}
+
         <div class="plan-prediction">
           <div class="plan-summary-text" style="color: ${accentColor}">${plan.summary}</div>
         </div>
@@ -454,7 +472,7 @@ export function openMiniHUD(signal) {
 /**
  * Update PancakeSwap Round Info
  */
-export function updateRoundInfo(round) {
+export function updateRoundInfo(round, history = [], livePrice = null) {
   const card = document.getElementById('signal-card');
   if (!card) return;
 
@@ -498,6 +516,40 @@ export function updateRoundInfo(round) {
   const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
   const isUrgent = round.secondsRemaining < 30;
 
+  // Live Price Calculation
+  let priceHtml = '';
+  if (round.status === 'LOCKED' && livePrice && round.lockPrice > 0) {
+    const diff = livePrice - round.lockPrice;
+    const isWin = diff > 0 ? (round.bullRatio > 50) : (round.bearRatio > 50); // Rough approximation of "winning" side
+    const color = diff > 0 ? 'var(--green)' : 'var(--red)';
+    const sign = diff > 0 ? '+' : '';
+
+    priceHtml = `
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: var(--text-secondary);">Live vs Lock</span>
+              <span style="font-family: var(--font-mono); font-weight: bold; color: ${color};">
+                  ${formatPrice(livePrice)} (${sign}${diff.toFixed(2)})
+              </span>
+          </div>
+      `;
+  }
+
+  // History HTML
+  let historyHtml = '';
+  if (history && history.length > 0) {
+    const historyIcons = history.map(h => {
+      const icon = h.winner === 'UP' ? '🟢' : (h.winner === 'DOWN' ? '🔴' : '⚪');
+      return `<span title="Round ${h.epoch}: ${h.winner}" style="cursor: help;">${icon}</span>`;
+    }).reverse().join(' '); // Show newest rightmost or leftmost? Usually latest is right. Let's do latest right.
+
+    historyHtml = `
+          <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em;">
+              <span style="color: var(--text-secondary);">History (Last 5)</span>
+              <span style="letter-spacing: 4px;">${historyIcons}</span>
+          </div>
+      `;
+  }
+
   roundEl.innerHTML = `
         <div style="width: 100%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -517,9 +569,18 @@ export function updateRoundInfo(round) {
             </div>
             
             <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.75em; font-family: var(--font-mono);">
-                <span style="color: var(--green);">UP: ${round.bullRatio}% (${Math.round(round.bullAmount)} BNB)</span>
-                <span style="color: var(--red);">DOWN: ${round.bearRatio}% (${Math.round(round.bearAmount)} BNB)</span>
+                <div style="display: flex; flex-direction: column;">
+                    <span style="color: var(--green); font-weight: bold;">UP ${round.bullRatio}%</span>
+                    <span style="color: var(--text-muted);">${round.bullPayout.toFixed(2)}x</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                    <span style="color: var(--red); font-weight: bold;">DOWN ${round.bearRatio}%</span>
+                    <span style="color: var(--text-muted);">${round.bearPayout.toFixed(2)}x</span>
+                </div>
             </div>
+
+            ${priceHtml}
+            ${historyHtml}
         </div>
     `;
 }
@@ -646,3 +707,69 @@ function formatPrice(price) {
 function formatTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
+
+// ============================================================
+// Whale & Betting Analytics UI
+// ============================================================
+
+export function updateWhaleAlerts(data) {
+  const card = document.getElementById('signal-card');
+  if (!card) return;
+
+  let whaleEl = document.getElementById('whale-stats');
+  if (!whaleEl) {
+    whaleEl = document.createElement('div');
+    whaleEl.id = 'whale-stats';
+    whaleEl.style.marginTop = '15px';
+    whaleEl.style.padding = '10px';
+    whaleEl.style.background = 'rgba(0, 0, 0, 0.2)';
+    whaleEl.style.borderRadius = '8px';
+    whaleEl.style.fontSize = '0.85em';
+    whaleEl.style.border = '1px solid var(--border)';
+
+    // Insert at bottom of card
+    card.appendChild(whaleEl);
+  }
+
+  // Only update if we have new stats or a new whale
+  if (data.type === 'BET' && !data.isWhale && !data.stats) return;
+
+  const stats = data.stats || data; // Handle both direct stats object or event object
+
+  // Calculate Flow
+  const totalVol = stats.bullVolume + stats.bearVolume;
+  const bullPct = totalVol > 0 ? (stats.bullVolume / totalVol) * 100 : 50;
+
+  // Whale List HTML
+  const whaleList = stats.whales.map(w => {
+    const sideColor = w.side === 'BULL' ? 'var(--green)' : 'var(--red)';
+    const ago = Math.floor((Date.now() - w.timestamp) / 1000);
+    return `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-family: var(--font-mono);">
+                <span>🐋 <span style="color: ${sideColor}; font-weight: bold;">${w.side}</span></span>
+                <span>${w.amount.toFixed(2)} BNB <span style="color: var(--text-secondary); font-size: 0.8em;">(${ago}s ago)</span></span>
+            </div>
+        `;
+  }).join('');
+
+  whaleEl.innerHTML = `
+        <div style="margin-bottom: 8px; font-weight: bold; color: var(--text-primary); display: flex; justify-content: space-between;">
+            <span>LIVE ACTIVITY (Session)</span>
+            <span style="font-family: var(--font-mono); font-weight: normal; color: var(--text-secondary);">⚡ ${stats.velocity} bets/min</span>
+        </div>
+
+        <!-- Volume Flow -->
+        <div style="display: flex; align-items: center; margin-bottom: 12px; font-size: 0.8em;">
+            <span style="color: var(--green); width: 40px;">${bullPct.toFixed(0)}%</span>
+            <div style="flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 0 8px; overflow: hidden; display: flex;">
+                <div style="width: ${bullPct}%; background: var(--green); height: 100%;"></div>
+                <div style="flex: 1; background: var(--red); height: 100%;"></div>
+            </div>
+            <span style="color: var(--red); width: 40px; text-align: right;">${(100 - bullPct).toFixed(0)}%</span>
+        </div>
+
+        <!-- Recent Whales -->
+        ${whaleList ? `<div style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px;">${whaleList}</div>` : '<div style="text-align: center; color: var(--text-secondary); padding: 8px;">No recent whales 🐋</div>'}
+    `;
+}
+
