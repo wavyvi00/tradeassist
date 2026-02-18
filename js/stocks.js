@@ -27,6 +27,7 @@ export function getFinnhubKey() {
  * Fetch Stock Candles (OHLCV)
  * @param {string} symbol - e.g. 'AAPL'
  * @param {string} timeframe - '5m', '15m', '1h', 'D', 'W'
+ * @param {number|null} currentPrice - Optional live price to anchor mock data
  */
 export async function fetchStockCandles(symbol, timeframe = '15m', currentPrice = null) {
     if (!apiKey) throw new Error('API Key missing');
@@ -65,14 +66,14 @@ export async function fetchStockCandles(symbol, timeframe = '15m', currentPrice 
 
         if (!response.ok) {
             console.warn(`[Finnhub] API Error ${response.status}: ${response.statusText}. Using Mock Data.`);
-            return getMockCandles(symbol, resolution, from, now);
+            return getMockCandles(symbol, resolution, from, now, currentPrice);
         }
 
         const data = await response.json();
 
-        if (data.s === 'no_data') return [];
+        if (data.s === 'no_data') return getMockCandles(symbol, resolution, from, now, currentPrice);
 
-        if (!data.t) return [];
+        if (!data.t) return getMockCandles(symbol, resolution, from, now, currentPrice);
 
         return data.t.map((timestamp, index) => ({
             time: timestamp, // Seconds
@@ -164,25 +165,38 @@ function getMockQuote(symbol) {
     };
 }
 
-function getMockCandles(symbol, resolution, from, now) {
+function getMockCandles(symbol, resolution, from, now, currentPrice = null) {
     const candles = [];
-    let price = symbol === 'AAPL' ? 150 : 100;
+    // Use real price if available, otherwise default base
+    let price = currentPrice || (symbol === 'AAPL' ? 150 : 100);
     const step = 60 * (resolution === 'D' ? 1440 : (parseInt(resolution) || 15));
 
-    for (let t = from; t <= now; t += step) {
-        const change = (Math.random() - 0.5) * 2;
-        const open = price;
-        const close = price + change;
+    // Generate backwards so we end at currentPrice
+    const count = Math.floor((now - from) / step) || 100;
+
+    // Reverse walk from currentPrice
+    let current = price;
+
+    // Create array size of count
+    for (let i = 0; i < count; i++) {
+        candles.push({});
+    }
+
+    for (let i = count - 1; i >= 0; i--) {
+        const time = now - ((count - 1 - i) * step);
+        const change = (Math.random() - 0.5) * (price * 0.02); // 2% volatility
+        const close = current;
+        const open = current - change;
         const high = Math.max(open, close) + Math.random();
         const low = Math.min(open, close) - Math.random();
 
-        candles.push({
-            time: t,
-            open, high, low, close,
+        candles[i] = {
+            time, open, high, low, close,
             volume: Math.floor(Math.random() * 100000)
-        });
-        price = close;
+        };
+        current = open; // Step back
     }
+
     return candles;
 }
 
