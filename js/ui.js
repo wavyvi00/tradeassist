@@ -3,6 +3,7 @@
 // ============================================================
 
 import { getSignalHistory } from './signals.js';
+import { getFinnhubKey, setFinnhubKey } from './stocks.js';
 
 /**
  * Update the live price display
@@ -771,5 +772,157 @@ export function updateWhaleAlerts(data) {
         <!-- Recent Whales -->
         ${whaleList ? `<div style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px;">${whaleList}</div>` : '<div style="text-align: center; color: var(--text-secondary); padding: 8px;">No recent whales 🐋</div>'}
     `;
+}
+
+// ============================================================
+// Stock UI Functions
+// ============================================================
+
+/**
+ * Toggle between Crypto and Stock layouts
+ */
+export function toggleStockMode(isStock) {
+  // Toggles
+  document.getElementById('mode-crypto').classList.toggle('active', !isStock);
+  document.getElementById('mode-stocks').classList.toggle('active', isStock);
+
+  // Visibility
+  document.getElementById('pair-selector').style.display = isStock ? 'none' : 'block';
+
+  // Toggle containers
+  // Use opacity/pointer-events or display. Display is cleaner but might cause layout shifts.
+  const searchContainer = document.getElementById('stock-search-container');
+  if (searchContainer) searchContainer.style.display = isStock ? 'flex' : 'none';
+
+  const financialsSection = document.getElementById('financials-section');
+  if (financialsSection) financialsSection.style.display = isStock ? 'block' : 'none';
+
+  const predictionToggle = document.querySelector('.prediction-toggle');
+  if (predictionToggle) predictionToggle.style.visibility = isStock ? 'hidden' : 'visible'; // Keep layout space? Or display:none
+
+  const apiKeyBtn = document.getElementById('api-key-container');
+  if (apiKeyBtn) apiKeyBtn.style.display = isStock ? 'block' : 'none';
+
+  // Clear previous data visuals if switching
+  if (isStock) {
+    document.getElementById('whale-stats')?.remove(); // Remove crypto specific
+    document.getElementById('signal-history').innerHTML = '<div class="history-empty">Switching to Stocks...</div>';
+  }
+}
+
+/**
+ * Update Financials Grid
+ */
+export function updateFinancials(financials) {
+  const grid = document.getElementById('financials-grid');
+  if (!grid || !financials || !financials.metrics) return;
+
+  const m = financials.metrics;
+  const p = financials.profile;
+
+  const items = [
+    { label: 'Market Cap', value: m['marketCapitalization'] ? `$${(m['marketCapitalization'] / 1000).toFixed(2)}B` : '—' },
+    { label: 'P/E Ratio', value: m['peAnnual'] ? m['peAnnual'].toFixed(2) : '—' },
+    { label: 'Dividend Yield', value: m['dividendYieldIndicatedAnnual'] ? `${m['dividendYieldIndicatedAnnual'].toFixed(2)}%` : '—' },
+    { label: 'Beta', value: m['beta'] ? m['beta'].toFixed(2) : '—' },
+    { label: '52W High', value: m['52WeekHigh'] ? formatPrice(m['52WeekHigh']) : '—' },
+    { label: '52W Low', value: m['52WeekLow'] ? formatPrice(m['52WeekLow']) : '—' },
+  ];
+
+  grid.innerHTML = items.map(item => `
+        <div class="financial-card">
+            <span class="fin-label">${item.label}</span>
+            <span class="fin-value">${item.value}</span>
+        </div>
+    `).join('');
+
+  // bind report button
+  const btn = document.getElementById('view-full-report-btn');
+  if (btn) {
+    btn.onclick = () => showReportModal(financials);
+  }
+}
+
+/**
+ * Show API Key Modal
+ */
+export function initModals() {
+  // API Modal
+  const apiModal = document.getElementById('api-modal');
+  const apiBtn = document.getElementById('api-key-btn');
+  const closeApi = document.querySelector('.close-modal');
+  const saveKeyBtn = document.getElementById('save-api-key-btn');
+  const keyInput = document.getElementById('finnhub-key-input');
+
+  if (apiBtn) apiBtn.onclick = () => {
+    apiModal.style.display = 'flex';
+    keyInput.value = getFinnhubKey() || '';
+  };
+
+  if (closeApi) closeApi.onclick = () => apiModal.style.display = 'none';
+
+  if (saveKeyBtn) saveKeyBtn.onclick = () => {
+    const key = keyInput.value.trim();
+    if (key) {
+      setFinnhubKey(key);
+      apiModal.style.display = 'none';
+      alert('API Key Saved! Please search again to refresh.');
+    }
+  };
+
+  // Report Modal
+  const reportModal = document.getElementById('report-modal');
+  const closeReport = document.querySelector('.close-report');
+  if (closeReport) closeReport.onclick = () => reportModal.style.display = 'none';
+
+  // Click outside to close
+  window.onclick = (event) => {
+    if (event.target === apiModal) apiModal.style.display = 'none';
+    if (event.target === reportModal) reportModal.style.display = 'none';
+  };
+}
+
+/**
+ * Show Full Report Modal
+ */
+function showReportModal(financials) {
+  const modal = document.getElementById('report-modal');
+  const body = document.getElementById('report-body');
+  const title = document.getElementById('report-title');
+
+  if (!modal || !body) return;
+
+  const p = financials.profile || {};
+  const m = financials.metrics || {};
+
+  title.textContent = `${p.name || 'Company'} (${p.ticker || ''}) Report`;
+
+  body.innerHTML = `
+        <div class="report-header">
+            <img src="${p.logo}" class="report-logo" onerror="this.style.display='none'">
+            <div class="report-meta">
+                <p><strong>Industry:</strong> ${p.finnhubIndustry}</p>
+                <p><strong>Exchange:</strong> ${p.exchange}</p>
+                <p><strong>IPO:</strong> ${p.ipo}</p>
+            </div>
+        </div>
+        
+        <div class="report-grid">
+            <div class="report-section">
+                <h4>Valuation</h4>
+                <div class="report-row"><span>P/E TTM:</span> <span>${m['peTTM']?.toFixed(2) || '—'}</span></div>
+                <div class="report-row"><span>EPS TTM:</span> <span>${m['epsTTM']?.toFixed(2) || '—'}</span></div>
+                <div class="report-row"><span>Price/Book:</span> <span>${m['pbAnnual']?.toFixed(2) || '—'}</span></div>
+            </div>
+             <div class="report-section">
+                <h4>Performance</h4>
+                <div class="report-row"><span>YTD Return:</span> <span class="${m['yearToDatePriceReturnDaily'] >= 0 ? 'green' : 'red'}">${m['yearToDatePriceReturnDaily']?.toFixed(2)}%</span></div>
+                <div class="report-row"><span>52W High:</span> <span>${m['52WeekHigh']}</span></div>
+                <div class="report-row"><span>52W Low:</span> <span>${m['52WeekLow']}</span></div>
+            </div>
+        </div>
+    `;
+
+  modal.style.display = 'flex';
 }
 

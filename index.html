@@ -39,6 +39,17 @@
             <option value="BTC/USD" selected>BTC / USD</option>
             <option value="BNB/USD">BNB / USD</option>
           </select>
+
+          <!-- Stock Search Input (Hidden by default, shown in Stock Mode) -->
+          <div id="stock-search-container" class="stock-search-container" style="display: none;">
+            <input type="text" id="stock-ticker-input" placeholder="Enter Ticker (e.g. AAPL, TSLA)" autocomplete="off">
+            <button id="search-btn">🔍</button>
+          </div>
+
+          <div class="mode-toggles">
+            <button id="mode-crypto" class="mode-btn active">CRYPTO</button>
+            <button id="mode-stocks" class="mode-btn">STOCKS</button>
+          </div>
           <div class="prediction-toggle">
             <label class="toggle-switch">
               <input type="checkbox" id="prediction-mode-toggle">
@@ -60,104 +71,138 @@
         </div>
       </div>
 
-      <div class="top-right">
-        <div class="timeframe-selector">
-          <button class="tf-btn" data-tf="5m">5m</button>
-          <button class="tf-btn" data-tf="15m">15m</button>
-          <button class="tf-btn" data-tf="1h">1H</button>
-          <button class="tf-btn" data-tf="4h">4H</button>
-        </div>
-        <button id="theme-btn" class="icon-btn" title="Switch to light mode">☀️</button>
-        <button id="sound-btn" class="icon-btn active" title="Toggle alerts">🔔</button>
-        <button id="popout-btn" class="icon-btn" title="Pop-out mini HUD">⬗</button>
+      <div id="api-key-container" style="margin-right: 10px; display: none;">
+        <button id="api-key-btn" class="icon-btn" title="Set API Key">🔑</button>
       </div>
-    </header>
+      <div class="timeframe-selector">
+        <button class="tf-btn" data-tf="5m">5m</button>
+        <button class="tf-btn" data-tf="15m">15m</button>
+        <button class="tf-btn" data-tf="1h">1H</button>
+        <button class="tf-btn" data-tf="D">1D</button> <!-- Added Day for stocks -->
+      </div>
+      <button id="theme-btn" class="icon-btn" title="Switch to light mode">☀️</button>
+      <button id="sound-btn" class="icon-btn active" title="Toggle alerts">🔔</button>
+      <button id="popout-btn" class="icon-btn" title="Pop-out mini HUD">⬗</button>
+  </div>
+  </header>
 
-    <!-- Main Content -->
-    <main class="content">
-      <!-- Left: Trade Plan + Signal -->
-      <section class="signal-section">
-        <!-- Trade Plan — The explicit "BUY here → SELL there" prediction -->
-        <div class="trade-plan-section">
-          <h3 class="section-title">📊 TRADE PLAN</h3>
-          <div id="trade-plan" class="trade-plan-container">
-            <div class="trade-plan-card neutral">
-              <div class="plan-header">
-                <span class="plan-icon">⏳</span>
-                <span class="plan-title">ANALYZING...</span>
-              </div>
-              <div class="plan-summary-text">Calculating indicators and building trade plan...</div>
+  <!-- Main Content -->
+  <main class="content">
+    <!-- Left: Trade Plan + Signal -->
+    <section class="signal-section">
+      <!-- Trade Plan — The explicit "BUY here → SELL there" prediction -->
+      <div class="trade-plan-section">
+        <h3 class="section-title">📊 TRADE PLAN</h3>
+        <div id="trade-plan" class="trade-plan-container">
+          <div class="trade-plan-card neutral">
+            <div class="plan-header">
+              <span class="plan-icon">⏳</span>
+              <span class="plan-title">ANALYZING...</span>
+            </div>
+            <div class="plan-summary-text">Calculating indicators and building trade plan...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Signal Score Card -->
+      <div id="signal-card" class="signal-card">
+        <div class="signal-header">
+          <h2>SIGNAL</h2>
+          <span id="last-refresh" class="last-refresh">—</span>
+        </div>
+
+        <div class="signal-body">
+          <div class="signal-action">⚪ LOADING</div>
+          <div class="signal-score-container">
+            <div class="signal-score-label">Confidence</div>
+            <div class="signal-score">—</div>
+          </div>
+          <div class="score-bar">
+            <div class="score-bar-track">
+              <div class="score-bar-fill"></div>
+              <div class="score-marker"></div>
+            </div>
+            <div class="score-bar-labels">
+              <span>SELL</span>
+              <span>NEUTRAL</span>
+              <span>BUY</span>
             </div>
           </div>
         </div>
 
-        <!-- Signal Score Card -->
-        <div id="signal-card" class="signal-card">
-          <div class="signal-header">
-            <h2>SIGNAL</h2>
-            <span id="last-refresh" class="last-refresh">—</span>
-          </div>
-
-          <div class="signal-body">
-            <div class="signal-action">⚪ LOADING</div>
-            <div class="signal-score-container">
-              <div class="signal-score-label">Confidence</div>
-              <div class="signal-score">—</div>
-            </div>
-            <div class="score-bar">
-              <div class="score-bar-track">
-                <div class="score-bar-fill"></div>
-                <div class="score-marker"></div>
-              </div>
-              <div class="score-bar-labels">
-                <span>SELL</span>
-                <span>NEUTRAL</span>
-                <span>BUY</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="signal-targets">
-            <div class="target-row neutral-msg">Calculating signals...</div>
-          </div>
+        <div class="signal-targets">
+          <div class="target-row neutral-msg">Calculating signals...</div>
         </div>
+      </div>
 
-        <!-- Signal Breakdown -->
-        <div class="breakdown-section">
-          <h3 class="section-title">Signal Breakdown</h3>
-          <div id="signal-breakdown" class="signal-breakdown">
-            <!-- Populated by JS -->
-          </div>
+      <!-- Signal Breakdown -->
+      <div class="breakdown-section">
+        <h3 class="section-title">Signal Breakdown</h3>
+        <div id="signal-breakdown" class="signal-breakdown">
+          <!-- Populated by JS -->
         </div>
-      </section>
+      </div>
 
-      <!-- Right: Chart + Indicators + History -->
-      <section class="data-section">
-        <div class="chart-section">
-          <h3 class="section-title">📈 BTC/USD Chart</h3>
-          <div id="chart-container" class="chart-container"></div>
+      <!-- Financials Summary (Stock Mode) -->
+      <div id="financials-section" class="financials-section" style="display: none;">
+        <h3 class="section-title">📊 Financial Health</h3>
+        <div id="financials-grid" class="financials-grid">
+          <!-- Populated by JS -->
         </div>
+        <button id="view-full-report-btn" class="full-report-btn">View Indepth Report</button>
+      </div>
+    </section>
 
-        <div class="indicators-section">
-          <h3 class="section-title">Indicators</h3>
-          <div id="indicator-grid" class="indicator-grid">
-            <!-- Populated by JS -->
-          </div>
+    <!-- Right: Chart + Indicators + History -->
+    <section class="data-section">
+      <div class="chart-section">
+        <h3 class="section-title">📈 BTC/USD Chart</h3>
+        <div id="chart-container" class="chart-container"></div>
+      </div>
+
+      <div class="indicators-section">
+        <h3 class="section-title">Indicators</h3>
+        <div id="indicator-grid" class="indicator-grid">
+          <!-- Populated by JS -->
         </div>
+      </div>
 
-        <div class="history-section">
-          <h3 class="section-title">Signal History</h3>
-          <div id="signal-history" class="signal-history">
-            <div class="history-empty">Waiting for first signal...</div>
-          </div>
+      <div class="history-section">
+        <h3 class="section-title">Signal History</h3>
+        <div id="signal-history" class="signal-history">
+          <div class="history-empty">Waiting for first signal...</div>
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
+  </main>
 
-    <!-- Disclaimer -->
-    <footer class="disclaimer">
-      ⚠ Not financial advice. Signals are for educational/informational purposes only. Always do your own research.
-    </footer>
+  <!-- Disclaimer -->
+  <footer class="disclaimer">
+    ⚠ Not financial advice. Signals are for educational/informational purposes only. Always do your own research.
+  </footer>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="api-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2>Integrations</h2>
+      <div class="input-group">
+        <label>Finnhub API Key (for Stocks)</label>
+        <input type="text" id="finnhub-key-input" placeholder="Enter API Key">
+        <p class="hint">Get free key from <a href="https://finnhub.io" target="_blank">finnhub.io</a></p>
+      </div>
+      <button id="save-api-key-btn">Save</button>
+    </div>
+  </div>
+
+  <!-- Stock Report Modal -->
+  <div id="report-modal" class="modal">
+    <div class="modal-content large">
+      <span class="close-report">&times;</span>
+      <h2 id="report-title">Financial Report</h2>
+      <div id="report-body"></div>
+    </div>
   </div>
 
   <script type="module" src="/js/app.js"></script>

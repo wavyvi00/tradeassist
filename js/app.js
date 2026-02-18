@@ -20,15 +20,27 @@ import {
     updateMiniHUD,
     updateRoundInfo,
     updateWhaleAlerts,
+    toggleStockMode,
+    updateFinancials,
+    initModals,
 } from './ui.js';
 import { getPancakeRound, getRoundHistory, startBetMonitor, stopBetMonitor } from './pancake.js';
 import { initChart, setCandleData, updateLastCandle, updateChartTheme } from './chart.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
+import {
+    setFinnhubKey,
+    fetchStockCandles,
+    fetchStockQuote,
+    fetchStockFinancials,
+    generateStockPrediction
+} from './stocks.js';
 
 // ---- State ----
 let currentTimeframe = '15m'; // Default
 let currentPair = 'BTC/USD'; // Default
+let currentTicker = 'AAPL'; // Default Stock
 let isPredictionMode = false; // Default
+let isStockMode = false; // Stock vs Crypto mode
 let candles = [];
 let currentSignal = null;
 let currentIndicators = null;
@@ -138,8 +150,110 @@ async function init() {
     startPriceStream();
     startAutoRefresh();
 
+    // Stock/Crypto Mode Switching
+    document.getElementById('mode-crypto').addEventListener('click', () => setMode(false));
+    document.getElementById('mode-stocks').addEventListener('click', () => setMode(true));
+
+    // Stock Search
+    document.getElementById('search-btn').addEventListener('click', handleStockSearch);
+    document.getElementById('stock-ticker-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleStockSearch();
+    });
+
+    // Initialize Modals
+    initModals();
+
     showLoading(false);
     console.log('[App] Trading HUD ready!');
+}
+
+async function setMode(isStock) {
+    if (isStockMode === isStock) return;
+    isStockMode = isStock;
+    toggleStockMode(isStock);
+
+    if (isStock) {
+        // Switch to Stocks
+        stopPancakePolling();
+        updateRoundInfo(null);
+        if (priceStream) {
+            priceStream.close();
+            priceStream = null;
+        }
+        document.title = 'Trading HUD — Stocks Assist';
+        showLoading(true);
+        // Load default stock or last searched?
+        await fetchAndAnalyzeStock();
+        showLoading(false);
+    } else {
+        // Switch to Crypto
+        document.title = 'Trading HUD — BTC/USD Signal Advisor';
+        showLoading(true);
+        await fetchAndAnalyze();
+        startPriceStream();
+        showLoading(false);
+    }
+}
+
+async function handleStockSearch() {
+    const input = document.getElementById('stock-ticker-input');
+    const ticker = input.value.toUpperCase().trim();
+    if (!ticker) return;
+
+    currentTicker = ticker;
+    showLoading(true);
+    await fetchAndAnalyzeStock();
+    showLoading(false);
+}
+
+async function fetchAndAnalyzeStock() {
+    try {
+        console.log(`[App] Fetching stock data for ${currentTicker}...`);
+
+        // Parallel Fetch
+        const [candlesData, quoteData, financialsData] = await Promise.all([
+            fetchStockCandles(currentTicker, currentTimeframe),
+            fetchStockQuote(currentTicker),
+            fetchStockFinancials(currentTicker)
+        ]);
+
+        candles = candlesData;
+        livePrice = quoteData.price;
+        liveChange = quoteData.changePct24h;
+
+        // Update Price UI
+        updatePrice(quoteData.price, quoteData.change24h, quoteData.changePct24h);
+
+        // Update Chart
+        setCandleData(candles);
+
+        // Compute Indicators (Reuse logic)
+        currentIndicators = computeAll(candles);
+
+        // Generate Prediction
+        currentSignal = generateStockPrediction(currentTicker, currentTimeframe, currentIndicators, financialsData);
+
+        // Update UI
+        updateSignalCard(currentSignal);
+        updateTradePlan(currentSignal.tradePlan, currentSignal);
+        updateIndicatorGrid(currentSignal, currentIndicators);
+        updateBreakdown(currentSignal.breakdown);
+        updateHistory(); // Maybe keep separate history for stocks? For now mix it.
+        updateLastRefresh();
+        updateConnectionStatus(true);
+
+        // Update Financials
+        updateFinancials(financialsData);
+
+        // Title
+        const chartTitle = document.querySelector('.chart-section .section-title');
+        if (chartTitle) chartTitle.textContent = `📈 ${currentTicker} Chart`;
+
+    } catch (e) {
+        console.error('[App] Stock Fetch Error:', e);
+        updateConnectionStatus(false);
+        // Show error in UI?
+    }
 }
 
 let soundEnabled = true;
@@ -298,7 +412,13 @@ async function pollPancakeRound() {
 function startAutoRefresh() {
     if (refreshInterval) clearInterval(refreshInterval);
     const interval = REFRESH_INTERVALS[currentTimeframe] || 60000;
-    refreshInterval = setInterval(fetchAndAnalyze, interval);
+    refreshInterval = setInterval(() => {
+        if (isStockMode) {
+            fetchAndAnalyzeStock();
+        } else {
+            fetchAndAnalyze();
+        }
+    }, interval);
 }
 
 /**
