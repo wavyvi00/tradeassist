@@ -28,7 +28,7 @@ export function getFinnhubKey() {
  * @param {string} symbol - e.g. 'AAPL'
  * @param {string} timeframe - '5m', '15m', '1h', 'D', 'W'
  */
-export async function fetchStockCandles(symbol, timeframe = '15m') {
+export async function fetchStockCandles(symbol, timeframe = '15m', currentPrice = null) {
     if (!apiKey) throw new Error('API Key missing');
 
     // Map timeframe to Finnhub resolution
@@ -84,7 +84,7 @@ export async function fetchStockCandles(symbol, timeframe = '15m') {
         }));
     } catch (e) {
         console.error('[Finnhub] Candle Fetch Error:', e);
-        return getMockCandles(symbol, resolution, from, now);
+        return getMockCandles(symbol, resolution, from, now, currentPrice);
     }
 }
 

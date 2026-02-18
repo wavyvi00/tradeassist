@@ -210,10 +210,12 @@ async function fetchAndAnalyzeStock() {
     try {
         console.log(`[App] Fetching stock data for ${currentTicker}...`);
 
-        // Parallel Fetch
-        const [candlesData, quoteData, financialsData] = await Promise.all([
-            fetchStockCandles(currentTicker, currentTimeframe),
-            fetchStockQuote(currentTicker),
+        // Fetch Quote First (to get real price for mock candles if needed)
+        const quoteData = await fetchStockQuote(currentTicker);
+
+        // Parallel Fetch for rest
+        const [candlesData, financialsData] = await Promise.all([
+            fetchStockCandles(currentTicker, currentTimeframe, quoteData.price),
             fetchStockFinancials(currentTicker)
         ]);
 
