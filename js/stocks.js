@@ -273,7 +273,7 @@ export function generateStockPrediction(symbol, timeframe, indicators, financial
         // 52 Week High/Low Position
         if (m['52WeekHigh'] && m['52WeekLow']) {
             const range = m['52WeekHigh'] - m['52WeekLow'];
-            const current = (indicators.candles[indicators.candles.length - 1].close - m['52WeekLow']) / range;
+            const current = (indicators.price.current - m['52WeekLow']) / range;
 
             if (current < 0.1) {
                 score += 10;
@@ -309,7 +309,7 @@ export function generateStockPrediction(symbol, timeframe, indicators, financial
     }
 
     // Mock targets for now based on ATR
-    const currentPrice = indicators.candles[indicators.candles.length - 1].close;
+    const currentPrice = indicators.price.current;
     const atr = indicators.atr.value || (currentPrice * 0.02);
 
     const targets = {
