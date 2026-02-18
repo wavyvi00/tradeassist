@@ -59,33 +59,33 @@ export async function fetchStockCandles(symbol, timeframe = '15m') {
         default: from = now - (30 * 24 * 60 * 60);
     }
 
-    const url = `${FINNHUB_BASE}/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${now}&token=${apiKey}`;
+    try {
+        const url = `${FINNHUB_BASE}/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${now}&token=${apiKey}`;
+        const response = await fetch(url);
 
-    const response = await fetch(url);
-    const data = await response.json();
+        if (!response.ok) {
+            console.warn(`[Finnhub] API Error ${response.status}: ${response.statusText}. Using Mock Data.`);
+            return getMockCandles(symbol, resolution, from, now);
+        }
 
-    if (data.s === 'no_data') return [];
+        const data = await response.json();
 
-    // Convert to our app's candle format
-    /* Finnhub format:
-       c: Close price array based on time
-       h: High price array based on time
-       l: Low price array based on time
-       o: Open price array based on time
-       t: Time array
-       v: Volume array
-    */
+        if (data.s === 'no_data') return [];
 
-    if (!data.t) return [];
+        if (!data.t) return [];
 
-    return data.t.map((timestamp, index) => ({
-        time: timestamp, // Seconds
-        open: data.o[index],
-        high: data.h[index],
-        low: data.l[index],
-        close: data.c[index],
-        volume: data.v[index]
-    }));
+        return data.t.map((timestamp, index) => ({
+            time: timestamp, // Seconds
+            open: data.o[index],
+            high: data.h[index],
+            low: data.l[index],
+            close: data.c[index],
+            volume: data.v[index]
+        }));
+    } catch (e) {
+        console.error('[Finnhub] Candle Fetch Error:', e);
+        return getMockCandles(symbol, resolution, from, now);
+    }
 }
 
 /**
@@ -94,29 +94,29 @@ export async function fetchStockCandles(symbol, timeframe = '15m') {
 export async function fetchStockQuote(symbol) {
     if (!apiKey) throw new Error('API Key missing');
 
-    const url = `${FINNHUB_BASE}/quote?symbol=${symbol}&token=${apiKey}`;
-    const response = await fetch(url);
-    const data = await response.json();
+    try {
+        const url = `${FINNHUB_BASE}/quote?symbol=${symbol}&token=${apiKey}`;
+        const response = await fetch(url);
 
-    /* Format:
-       c: Current price
-       d: Change
-       dp: Percent change
-       h: High price of the day
-       l: Low price of the day
-       o: Open price of the day
-       pc: Previous close price
-    */
+        if (!response.ok) {
+            return getMockQuote(symbol);
+        }
 
-    return {
-        price: data.c,
-        change24h: data.d,
-        changePct24h: data.dp,
-        high24h: data.h,
-        low24h: data.l,
-        open24h: data.o,
-        prevClose: data.pc
-    };
+        const data = await response.json();
+
+        return {
+            price: data.c,
+            change24h: data.d,
+            changePct24h: data.dp,
+            high24h: data.h,
+            low24h: data.l,
+            open24h: data.o,
+            prevClose: data.pc
+        };
+    } catch (e) {
+        console.error('[Finnhub] Quote Error:', e);
+        return getMockQuote(symbol);
+    }
 }
 
 /**
@@ -125,17 +125,89 @@ export async function fetchStockQuote(symbol) {
 export async function fetchStockFinancials(symbol) {
     if (!apiKey) throw new Error('API Key missing');
 
-    const [profileRes, metricsRes] = await Promise.all([
-        fetch(`${FINNHUB_BASE}/stock/profile2?symbol=${symbol}&token=${apiKey}`),
-        fetch(`${FINNHUB_BASE}/stock/metric?symbol=${symbol}&metric=all&token=${apiKey}`)
-    ]);
+    try {
+        const [profileRes, metricsRes] = await Promise.all([
+            fetch(`${FINNHUB_BASE}/stock/profile2?symbol=${symbol}&token=${apiKey}`),
+            fetch(`${FINNHUB_BASE}/stock/metric?symbol=${symbol}&metric=all&token=${apiKey}`)
+        ]);
 
-    const profile = await profileRes.json();
-    const metrics = await metricsRes.json();
+        if (!profileRes.ok || !metricsRes.ok) throw new Error('Financials API Error');
 
+        const profile = await profileRes.json();
+        const metrics = await metricsRes.json();
+
+        return {
+            profile,
+            metrics: metrics.metric || {}
+        };
+    } catch (e) {
+        console.error('[Finnhub] Financials Error:', e);
+        return getMockFinancials(symbol);
+    }
+}
+
+// ============================================================
+// MOCK DATA GENERATORS (Fallback)
+// ============================================================
+
+function getMockQuote(symbol) {
+    const base = symbol === 'AAPL' ? 150 : (symbol === 'TSLA' ? 200 : 100);
+    const price = base + (Math.random() * 10 - 5);
     return {
-        profile,
-        metrics: metrics.metric || {}
+        price: price,
+        change24h: 1.5,
+        changePct24h: 1.25,
+        high24h: price + 2,
+        low24h: price - 2,
+        open24h: base,
+        prevClose: base
+    };
+}
+
+function getMockCandles(symbol, resolution, from, now) {
+    const candles = [];
+    let price = symbol === 'AAPL' ? 150 : 100;
+    const step = 60 * (resolution === 'D' ? 1440 : (parseInt(resolution) || 15));
+
+    for (let t = from; t <= now; t += step) {
+        const change = (Math.random() - 0.5) * 2;
+        const open = price;
+        const close = price + change;
+        const high = Math.max(open, close) + Math.random();
+        const low = Math.min(open, close) - Math.random();
+
+        candles.push({
+            time: t,
+            open, high, low, close,
+            volume: Math.floor(Math.random() * 100000)
+        });
+        price = close;
+    }
+    return candles;
+}
+
+function getMockFinancials(symbol) {
+    return {
+        profile: {
+            name: symbol,
+            ticker: symbol,
+            logo: '',
+            finnhubIndustry: 'Technology',
+            exchange: 'NASDAQ',
+            ipo: '1980-12-12'
+        },
+        metrics: {
+            marketCapitalization: 2000000,
+            peAnnual: 25.5,
+            dividendYieldIndicatedAnnual: 0.5,
+            beta: 1.2,
+            '52WeekHigh': 200,
+            '52WeekLow': 100,
+            peTTM: 24.0,
+            epsTTM: 5.5,
+            pbAnnual: 10.0,
+            yearToDatePriceReturnDaily: 15.0
+        }
     };
 }
 
